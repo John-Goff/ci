@@ -41,7 +41,13 @@ defmodule Ci.MixProject do
   defp preferred_cli_env,
     do: [dialyzer: :test]
 
-  defp dialyzer, do: [plt_add_apps: [:mix]]
+  defp dialyzer do
+    [
+      plt_add_apps: [:mix],
+      plt_local_path: "priv/plts/project.plt",
+      plt_core_path: "priv/plts/core.plt"
+    ]
+  end
 
   defp docs do
     [

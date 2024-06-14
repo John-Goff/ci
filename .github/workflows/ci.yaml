@@ -49,6 +49,27 @@ jobs:
           key: deps-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ matrix.go }}-${{ github.ref }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
           path: deps
 
+      - name: Restore PLT cache
+        uses: actions/cache/restore@v4
+        id: mix-cache-plt
+        with:
+          path: priv/plts
+          key: plt-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ matrix.go }}-${{ github.ref }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          restore-keys: |
+            plt-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ matrix.go  }}-${{ github.ref }}-
+            plt-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ matrix.go  }}-
+
+      - name: Build PLTs
+        if: steps.mix-cache-plt.outputs.cache-hit != 'true'
+        run: mix dialyzer --plt
+
+      - name: Save PLT cache
+        uses: actions/cache/save@v4
+        if: steps.mix-cache-plt.outputs.cache-hit != 'true'
+        with:
+          key: plt-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ matrix.go }}-${{ github.ref }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          path: priv/plts
+
       - name: Restore cached build
         uses: actions/cache@v4
         with:

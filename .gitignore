@@ -25,3 +25,7 @@ ci-*.tar
 
 # Temporary files for e.g. tests
 /tmp
+
+# Where we store the Persistent Lookup Tables for Dialyzer in our CI.
+/priv/plts/*.plt
+/priv/plts/*.plt.hash
