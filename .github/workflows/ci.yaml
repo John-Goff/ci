@@ -6,38 +6,57 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        elixir: ["1.15.7", "1.16.3"]
+        otp: ["25.3.2.12", "26.2.5"]
+        go: ["1.21.11", "1.22.4"]
+
     env:
-      CACHE_VERSION: v1
+      CACHE_VERSION: v2
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - uses: erlef/setup-beam@v1
         with:
-          otp-version: "24.0"
-          elixir-version: "1.12"
+          version-type: strict
+          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir }}
 
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v5
         with:
-          go-version: 1.22.4
+          go-version: ${{ matrix.go }}
 
       - name: Restore cached deps
-        uses: actions/cache@v1
+        uses: actions/cache/restore@v4
+        id: mix-cache-deps # id to use in retrieve action
         with:
           path: deps
-          key: deps-${{ env.CACHE_VERSION }}-${{ github.ref }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          key: deps-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ matrix.go }}-${{ github.ref }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
           restore-keys: |
-            deps-${{ env.CACHE_VERSION }}-${{ github.ref }}-
-            deps-${{ env.CACHE_VERSION }}-
+            deps-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ matrix.go  }}-${{ github.ref }}-
+            deps-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ matrix.go  }}-
+
+      - name: Install Dependencies
+        if: steps.mix-cache-deps.outputs.cache-hit != 'true'
+        run: mix deps.get
+
+      - name: Save deps cache
+        uses: actions/cache/save@v4
+        if: steps.mix-cache-deps.outputs.cache-hit != 'true'
+        with:
+          key: deps-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ matrix.go }}-${{ github.ref }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          path: deps
 
       - name: Restore cached build
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: _build
-          key: build-${{ env.CACHE_VERSION }}-${{ github.ref }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          key: build-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ matrix.go }}-${{ github.ref }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
           restore-keys: |
-            build-${{ env.CACHE_VERSION }}-${{ github.ref }}-
-            build-${{ env.CACHE_VERSION }}-
+            build-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ matrix.go }}-${{ github.ref }}-
+            build-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ matrix.go }}-
 
-      - run: mix deps.get
-      - run: mix ci.check
+      - name: Run tests
+        run: mix ci.check
